@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
-import { Routes, Route } from 'react-router-dom';
+// 1. Добавляем 'useNavigate' в импорт
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import Marketplace from './pages/Marketplace';
@@ -30,9 +31,23 @@ import NotificationCenter from './pages/NotificationCenter';
 import News from './pages/News';
 
 const App: React.FC = () => {
-  // --- НАЧАЛО ИЗМЕНЕНИЙ ---
-  // Объявление компонента Toast перенесено внутрь компонента App.
-  // Теперь он будет иметь доступ к контексту, предоставляемому CartProvider.
+  // 2. Получаем функцию навигации от React Router
+  const navigate = useNavigate();
+
+  // 3. Добавляем useEffect для исправления проблемы с HashRouter при первом запуске
+  useEffect(() => {
+    // Этот код выполнится один раз при первой загрузке приложения.
+    // Он проверяет, есть ли хэш в URL.
+    if (window.location.hash === '') {
+      // Если хэша нет (пустая строка), значит это первый заход из Telegram.
+      // Мы принудительно перенаправляем пользователя на главную страницу ('/').
+      // HashRouter автоматически преобразует это в правильный путь '/#'.
+      navigate('/', { replace: true });
+    }
+  }, [navigate]); // Зависимость, чтобы useEffect не ругался
+
+
+  // Компонент Toast, как мы и договаривались, находится внутри App
   const Toast: React.FC = () => {
       const { toastMessage, setToastMessage } = useCart();
       const [visible, setVisible] = useState(false);
@@ -43,7 +58,6 @@ const App: React.FC = () => {
               setVisible(true);
               const timer = setTimeout(() => {
                   setVisible(false);
-                  // Allow fade-out animation to complete
                   setTimeout(() => setToastMessage(null), 300); 
               }, 2000);
               return () => clearTimeout(timer);
@@ -59,8 +73,8 @@ const App: React.FC = () => {
           toastRoot
       );
   };
-  // --- КОНЕЦ ИЗМЕНЕНИЙ ---
 
+  // Остальная часть компонента без изменений
   return (
     <CartProvider>
       <div className="h-screen w-screen max-w-md mx-auto flex flex-col font-sans bg-white shadow-2xl">
@@ -94,7 +108,6 @@ const App: React.FC = () => {
           </Routes>
         </main>
         <BottomNav />
-        {/* Вызов компонента Toast остается на прежнем месте */}
         <Toast />
       </div>
     </CartProvider>
