@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
-// 1. Импортируем 'Navigate' вместо 'useNavigate'
-import { Routes, Route, Navigate } from 'react-router-dom';
+// 1. Убираем Navigate, useNavigate из импорта
+import { Routes, Route } from 'react-router-dom'; 
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import Marketplace from './pages/Marketplace';
@@ -30,32 +30,11 @@ import PurchaseHistory from './pages/PurchaseHistory';
 import NotificationCenter from './pages/NotificationCenter';
 import News from './pages/News';
 
-// --- НАЧАЛО НОВОГО РЕШЕНИЯ ---
-
-// 2. Создаем компонент-редиректор.
-// Его задача - проверить URL при первой загрузке и, если нужно, выполнить редирект.
-const RootRedirector: React.FC = () => {
-  // Проверяем, пустой ли хэш в URL.
-  // Пустой хэш ('', '#') означает, что пользователь зашел на корневой URL без указания маршрута.
-  if (window.location.hash === '' || window.location.hash === '#') {
-    // Возвращаем специальный компонент <Navigate>, который декларативно
-    // говорит React Router'у перенаправить пользователя на главную страницу ('/').
-    // 'replace' означает, что этот редирект не попадет в историю браузера.
-    return <Navigate to="/" replace />;
-  }
-
-  // Если хэш уже есть (например, /#/ads), то компонент ничего не делает (возвращает null),
-  // и React Router продолжает обрабатывать маршруты как обычно.
-  return null;
-};
-
-// --- КОНЕЦ НОВОГО РЕШЕНИЯ ---
-
+// 2. Полностью удаляем отсюда компонент RootRedirector
 
 const App: React.FC = () => {
-  // Старый useEffect и useNavigate отсюда убраны.
+  // 3. Убеждаемся, что здесь нет useEffect и useNavigate
 
-  // Компонент Toast остается без изменений, внутри App.
   const Toast: React.FC = () => {
       const { toastMessage, setToastMessage } = useCart();
       const [visible, setVisible] = useState(false);
@@ -66,7 +45,7 @@ const App: React.FC = () => {
               setVisible(true);
               const timer = setTimeout(() => {
                   setVisible(false);
-                  setTimeout(() => setToastMessage(null), 300);
+                  setTimeout(() => setToastMessage(null), 300); 
               }, 2000);
               return () => clearTimeout(timer);
           }
@@ -85,14 +64,11 @@ const App: React.FC = () => {
   return (
     <CartProvider>
       <div className="h-screen w-screen max-w-md mx-auto flex flex-col font-sans bg-white shadow-2xl">
-        {/* Оставляем V2 в заголовке, чтобы быть уверенными, что видим последнюю версию */}
-        <Header title="АгроХаб V2" /> 
+        {/* 4. Возвращаем нормальный заголовок */}
+        <Header title="АгроХаб" />
         <main className="flex-grow overflow-y-auto pb-16 bg-gray-50 relative">
           <Routes>
-            {/* 3. Добавляем новый маршрут. Он будет обрабатывать самый корневой URL */}
-            <Route path="" element={<RootRedirector />} />
-            
-            {/* Все остальные маршруты остаются как были */}
+            {/* 5. Убеждаемся, что здесь нет маршрута для RootRedirector */}
             <Route path="/" element={<Marketplace />} />
             <Route path="/ads" element={<AdBoard />} />
             <Route path="/ai-assistant" element={<AIAssistant />} />

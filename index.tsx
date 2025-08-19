@@ -1,8 +1,9 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
-import { HashRouter } from 'react-router-dom';
+import App from './App.tsx';
+import './index.css';
+// 1. Меняем импорт
+import { BrowserRouter } from 'react-router-dom';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -12,8 +13,9 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <HashRouter>
+    {/* 2. Меняем компонент */}
+    <BrowserRouter>
       <App />
-    </HashRouter>
+    </BrowserRouter>
   </React.StrictMode>
 );
