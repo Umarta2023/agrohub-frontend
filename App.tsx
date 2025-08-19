@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
-// 1. Добавляем 'useNavigate' в импорт
-import { Routes, Route, useNavigate } from 'react-router-dom';
+// 1. Импортируем 'Navigate' вместо 'useNavigate'
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import Marketplace from './pages/Marketplace';
@@ -30,24 +30,32 @@ import PurchaseHistory from './pages/PurchaseHistory';
 import NotificationCenter from './pages/NotificationCenter';
 import News from './pages/News';
 
+// --- НАЧАЛО НОВОГО РЕШЕНИЯ ---
+
+// 2. Создаем компонент-редиректор.
+// Его задача - проверить URL при первой загрузке и, если нужно, выполнить редирект.
+const RootRedirector: React.FC = () => {
+  // Проверяем, пустой ли хэш в URL.
+  // Пустой хэш ('', '#') означает, что пользователь зашел на корневой URL без указания маршрута.
+  if (window.location.hash === '' || window.location.hash === '#') {
+    // Возвращаем специальный компонент <Navigate>, который декларативно
+    // говорит React Router'у перенаправить пользователя на главную страницу ('/').
+    // 'replace' означает, что этот редирект не попадет в историю браузера.
+    return <Navigate to="/" replace />;
+  }
+
+  // Если хэш уже есть (например, /#/ads), то компонент ничего не делает (возвращает null),
+  // и React Router продолжает обрабатывать маршруты как обычно.
+  return null;
+};
+
+// --- КОНЕЦ НОВОГО РЕШЕНИЯ ---
+
+
 const App: React.FC = () => {
-  // 2. Получаем функцию навигации от React Router
-  const navigate = useNavigate();
+  // Старый useEffect и useNavigate отсюда убраны.
 
-  // 3. Добавляем useEffect для исправления проблемы с HashRouter при первом запуске
-  useEffect(() => {
-    // Этот код выполнится один раз при первой загрузке приложения.
-    // Он проверяет, есть ли хэш в URL.
-    if (window.location.hash === '') {
-      // Если хэша нет (пустая строка), значит это первый заход из Telegram.
-      // Мы принудительно перенаправляем пользователя на главную страницу ('/').
-      // HashRouter автоматически преобразует это в правильный путь '/#'.
-      navigate('/', { replace: true });
-    }
-  }, [navigate]); // Зависимость, чтобы useEffect не ругался
-
-
-  // Компонент Toast, как мы и договаривались, находится внутри App
+  // Компонент Toast остается без изменений, внутри App.
   const Toast: React.FC = () => {
       const { toastMessage, setToastMessage } = useCart();
       const [visible, setVisible] = useState(false);
@@ -58,7 +66,7 @@ const App: React.FC = () => {
               setVisible(true);
               const timer = setTimeout(() => {
                   setVisible(false);
-                  setTimeout(() => setToastMessage(null), 300); 
+                  setTimeout(() => setToastMessage(null), 300);
               }, 2000);
               return () => clearTimeout(timer);
           }
@@ -74,13 +82,17 @@ const App: React.FC = () => {
       );
   };
 
-  // Остальная часть компонента без изменений
   return (
     <CartProvider>
       <div className="h-screen w-screen max-w-md mx-auto flex flex-col font-sans bg-white shadow-2xl">
-        <Header title="АгроХаб" />
+        {/* Оставляем V2 в заголовке, чтобы быть уверенными, что видим последнюю версию */}
+        <Header title="АгроХаб V2" /> 
         <main className="flex-grow overflow-y-auto pb-16 bg-gray-50 relative">
           <Routes>
+            {/* 3. Добавляем новый маршрут. Он будет обрабатывать самый корневой URL */}
+            <Route path="" element={<RootRedirector />} />
+            
+            {/* Все остальные маршруты остаются как были */}
             <Route path="/" element={<Marketplace />} />
             <Route path="/ads" element={<AdBoard />} />
             <Route path="/ai-assistant" element={<AIAssistant />} />
