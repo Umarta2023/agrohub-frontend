@@ -1,31 +1,39 @@
-
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import useMockData from '../hooks/useMockData';
 import ProductCard from '../components/ProductCard';
+import { useGetShopById } from '../hooks/useGetShopById';
+import { useGetMyProducts } from '../hooks/useGetMyProducts';
 
 const Shop: React.FC = () => {
     const { shopId } = useParams<{ shopId: string }>();
-    const { shops, products, loading } = useMockData();
+    
+    // --- 1. Преобразуем ID из строки в число ---
+    const numericShopId = shopId ? parseInt(shopId, 10) : undefined;
 
-    const shop = shops.find(s => s.id === shopId);
-    const shopProducts = products.filter(p => p.shopId === shopId);
+    // --- 2. Получаем реальные данные с сервера ---
+    const { data: shop, isLoading: isLoadingShop, isError } = useGetShopById(numericShopId);
+    const { data: shopProducts = [], isLoading: isLoadingProducts } = useGetMyProducts(numericShopId);
+    
+    // --- 3. Объединяем состояния загрузки ---
+    const isLoading = isLoadingShop || isLoadingProducts;
 
-    if (loading) {
+    // --- 4. Обрабатываем состояния загрузки и ошибки ---
+    if (isLoading) {
         return <div className="text-center p-10">Загрузка данных магазина...</div>;
     }
 
-    if (!shop) {
+    if (isError || !shop) {
         return (
             <div className="text-center p-10">
                 <h1 className="text-2xl font-bold text-red-500">Магазин не найден</h1>
                 <Link to="/" className="mt-4 inline-block text-blue-600 hover:underline">
-                    Вернуться на главную
+                    Вернуться в Маркетплейс
                 </Link>
             </div>
         );
     }
 
+    // --- 5. Основная разметка ---
     return (
         <div className="p-4">
             <div className="bg-white p-6 rounded-xl shadow-md mb-6">

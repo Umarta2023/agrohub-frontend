@@ -1,6 +1,7 @@
 
+// types.ts
 export interface Shop {
-  id: string;
+  id: number; // <--- ИЗМЕНЯЕМ ЗДЕСЬ
   name: string;
   description: string;
   logoUrl: string;
@@ -8,12 +9,12 @@ export interface Shop {
 }
 
 export interface Product {
-  id: string;
+  id: number;
   name: string;
   category: string;
   price: string;
   imageUrl: string;
-  shopId: string;
+  shopId: number;
   isNew: boolean;
   quantity: number;
 }
