@@ -1,21 +1,28 @@
-
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import useMockData from '../hooks/useMockData';
 import ServiceCard from '../components/ServiceCard';
+import { useGetServiceProviderById } from '../hooks/useGetServiceProviderById';
+import { useGetServicesByProviderId } from '../hooks/useGetServicesByProviderId';
 
 const ServiceProvider: React.FC = () => {
     const { providerId } = useParams<{ providerId: string }>();
-    const { serviceProviders, services, loading } = useMockData();
 
-    const provider = serviceProviders.find(p => p.id === providerId);
-    const providerServices = services.filter(s => s.providerId === providerId);
+    // --- 1. Преобразуем ID в число ---
+    const numericProviderId = providerId ? parseInt(providerId, 10) : undefined;
 
-    if (loading) {
+    // --- 2. Получаем реальные данные с сервера ---
+    const { data: provider, isLoading: isLoadingProvider, isError } = useGetServiceProviderById(numericProviderId);
+    const { data: providerServices = [], isLoading: isLoadingServices } = useGetServicesByProviderId(numericProviderId);
+
+    // --- 3. Объединяем состояния загрузки ---
+    const isLoading = isLoadingProvider || isLoadingServices;
+    
+    // --- 4. Обрабатываем состояния загрузки и ошибки ---
+    if (isLoading) {
         return <div className="text-center p-10">Загрузка данных компании...</div>;
     }
 
-    if (!provider) {
+    if (isError || !provider) {
         return (
             <div className="text-center p-10">
                 <h1 className="text-2xl font-bold text-red-500">Компания не найдена</h1>
@@ -26,6 +33,7 @@ const ServiceProvider: React.FC = () => {
         );
     }
 
+    // --- 5. Основная разметка ---
     return (
         <div className="p-4">
             <div className="bg-white p-6 rounded-xl shadow-md mb-6">

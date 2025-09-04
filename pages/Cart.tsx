@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import useMockData from '../hooks/useMockData';
 import { ICONS } from '../constants';
 import type { Product } from '../types';
+import { useGetProducts } from '../hooks/useGetProducts';
+import { useGetShops } from '../hooks/useGetShops';
 
 const parsePrice = (price: string): number => {
     return parseFloat(price.replace(/[^0-9.-]+/g,""));
@@ -11,16 +12,24 @@ const parsePrice = (price: string): number => {
 
 const Cart: React.FC = () => {
     const { cartItems, updateItemQuantity, removeFromCart } = useCart();
-    const { products, shops, loading } = useMockData();
     const navigate = useNavigate();
 
-    if (loading) {
+    // --- 1. Получаем реальные данные с сервера ---
+    const { data: products = [], isLoading: isLoadingProducts } = useGetProducts();
+    const { data: shops = [], isLoading: isLoadingShops } = useGetShops();
+
+    const isLoading = isLoadingProducts || isLoadingShops;
+
+    // --- 2. Логика остается прежней, но теперь работает с реальными данными ---
+    if (isLoading) {
         return <div className="text-center p-10">Загрузка...</div>;
     }
 
     const detailedCartItems = cartItems
         .map(item => {
-            const product = products.find(p => p.id === item.productId);
+            // ID товара теперь число, нужно преобразовать
+            const productIdAsNumber = parseInt(item.productId, 10);
+            const product = products.find(p => p.id === productIdAsNumber);
             if (!product) return null;
             return {
                 ...product,
@@ -34,6 +43,7 @@ const Cart: React.FC = () => {
     }, 0);
     
     const itemsByShop = detailedCartItems.reduce((acc, item) => {
+        // shopId теперь число
         const shop = shops.find(s => s.id === item.shopId);
         const shopName = shop?.name || 'Неизвестный магазин';
         if (!acc[shopName]) {
@@ -82,16 +92,17 @@ const Cart: React.FC = () => {
                                     <p className="text-blue-600 font-bold text-md mt-1">{item.price}</p>
                                     <div className="flex items-center gap-2 mt-2">
                                         <button 
-                                            onClick={() => updateItemQuantity(item.id, item.cartQuantity - 1)}
+                                            // productId теперь число, а в корзине строка, приводим к строке
+                                            onClick={() => updateItemQuantity(String(item.id), item.cartQuantity - 1)}
                                             className="w-7 h-7 bg-gray-200 rounded-full font-bold text-gray-700 hover:bg-gray-300">-</button>
                                         <span>{item.cartQuantity}</span>
                                         <button 
-                                            onClick={() => updateItemQuantity(item.id, item.cartQuantity + 1)}
+                                            onClick={() => updateItemQuantity(String(item.id), item.cartQuantity + 1)}
                                             disabled={item.cartQuantity >= item.quantity}
                                             className="w-7 h-7 bg-gray-200 rounded-full font-bold text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">+</button>
                                     </div>
                                 </div>
-                                <button onClick={() => removeFromCart(item.id)} className="p-2 text-gray-400 hover:text-red-500">
+                                <button onClick={() => removeFromCart(String(item.id))} className="p-2 text-gray-400 hover:text-red-500">
                                     <ICONS.trash className="w-5 h-5"/>
                                 </button>
                             </div>

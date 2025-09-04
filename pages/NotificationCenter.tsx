@@ -1,39 +1,17 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import useMockData from '../hooks/useMockData';
+import { Link } from 'react-router-dom';
 import { ICONS } from '../constants';
 import type { AgroNotification } from '../types';
+import { useGetNotifications } from '../hooks/useGetNotifications';
+import { useMarkNotificationAsRead } from '../hooks/useMarkNotificationAsRead';
+import { useMarkAllNotificationsAsRead } from '../hooks/useMarkAllNotificationsAsRead';
 
 const getNotificationStyles = (type: AgroNotification['type']) => {
     switch (type) {
-        case 'warning':
-            return {
-                icon: ICONS.warning,
-                bgColor: 'bg-yellow-50',
-                borderColor: 'border-yellow-400',
-                iconColor: 'text-yellow-500'
-            };
-        case 'task':
-            return {
-                icon: ICONS.clipboardList,
-                bgColor: 'bg-blue-50',
-                borderColor: 'border-blue-400',
-                iconColor: 'text-blue-500'
-            };
-        case 'info':
-            return {
-                icon: ICONS.info,
-                bgColor: 'bg-green-50',
-                borderColor: 'border-green-400',
-                iconColor: 'text-green-500'
-            };
-        default:
-            return {
-                icon: ICONS.bell,
-                bgColor: 'bg-gray-50',
-                borderColor: 'border-gray-400',
-                iconColor: 'text-gray-500'
-            };
+        case 'warning': return { icon: ICONS.warning, bgColor: 'bg-yellow-50', borderColor: 'border-yellow-400', iconColor: 'text-yellow-500' };
+        case 'task': return { icon: ICONS.clipboardList, bgColor: 'bg-blue-50', borderColor: 'border-blue-400', iconColor: 'text-blue-500' };
+        case 'info': return { icon: ICONS.info, bgColor: 'bg-green-50', borderColor: 'border-green-400', iconColor: 'text-green-500' };
+        default: return { icon: ICONS.bell, bgColor: 'bg-gray-50', borderColor: 'border-gray-400', iconColor: 'text-gray-500' };
     }
 };
 
@@ -42,7 +20,7 @@ const NotificationCard: React.FC<{ notification: AgroNotification, onClick: () =
     
     const content = (
         <div 
-            onClick={!notification.link ? onClick : undefined} // Non-linkable items are clickable divs
+            onClick={!notification.link ? onClick : undefined}
             className={`relative p-4 rounded-xl shadow-md border-l-4 transition-all duration-300 ${borderColor} ${notification.read ? 'bg-white hover:bg-gray-50' : `${bgColor} hover:bg-white`} ${notification.link ? 'cursor-pointer' : ''}`}
         >
             {!notification.read && (
@@ -66,10 +44,13 @@ const NotificationCard: React.FC<{ notification: AgroNotification, onClick: () =
 
 
 const NotificationCenter: React.FC = () => {
-    const { notifications, markNotificationAsRead, markAllNotificationsAsRead, loading } = useMockData();
-    const navigate = useNavigate();
-
-    const handleNotificationClick = (id: string) => {
+    // --- Получаем реальные данные и мутации ---
+    const { data: notifications = [], isLoading } = useGetNotifications();
+    const { mutate: markNotificationAsRead } = useMarkNotificationAsRead();
+    const { mutate: markAllNotificationsAsRead } = useMarkAllNotificationsAsRead();
+    
+    // --- Обработчики событий ---
+    const handleNotificationClick = (id: number) => { // ID теперь число
         markNotificationAsRead(id);
     };
 
@@ -77,13 +58,16 @@ const NotificationCenter: React.FC = () => {
         markAllNotificationsAsRead();
     };
 
-    if (loading) {
+    // --- Обработка загрузки ---
+    if (isLoading) {
         return <div className="text-center p-10">Загрузка уведомлений...</div>;
     }
 
+    // --- Подготовка данных для рендера ---
     const unreadCount = notifications.filter(n => !n.read).length;
     const sortedNotifications = [...notifications].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+    // --- Основная разметка ---
     return (
         <div className="p-4 space-y-6">
             <div className="flex items-center justify-between">

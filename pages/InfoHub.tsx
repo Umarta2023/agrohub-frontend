@@ -1,13 +1,13 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ICONS } from '../constants';
-import useMockData from '../hooks/useMockData';
-import type { CommunityChannel } from '../types';
+import { CommunityChannel } from '../types';
 import TelegramPostCard from '../components/TelegramPostCard';
+import { useGetCommunityChannels } from '../hooks/useGetCommunityChannels';
+import { useGetTelegramPosts } from '../hooks/useGetTelegramPosts';
+import { useGetNotifications } from '../hooks/useGetNotifications';
 
-
-// --- Reusable Components for this page ---
+// --- Reusable Components (без изменений) ---
 
 const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -22,9 +22,7 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode; d
                 <span>{title}</span>
                 <ICONS.chevronDown className={`w-6 h-6 text-gray-600 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
-            <div
-                className={`grid transition-all duration-500 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
-            >
+            <div className={`grid transition-all duration-500 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                 <div className="overflow-hidden">
                     <div className="p-4 border-t border-gray-200">
                         {children}
@@ -71,85 +69,93 @@ const CommunityChannelCard: React.FC<{ channel: CommunityChannel }> = ({ channel
 // --- Main Page Component ---
 
 const InfoHub: React.FC = () => {
-  const { communityChannels, telegramPosts, notifications, loading } = useMockData();
+    const { data: communityChannels = [], isLoading: loadingChannels } = useGetCommunityChannels();
+    const { data: telegramPosts = [], isLoading: loadingPosts } = useGetTelegramPosts();
+    const { data: notifications = [], isLoading: loadingNotifs } = useGetNotifications();
 
-  if (loading) {
-    return <div className="text-center p-10">Загрузка...</div>;
-  }
-  
-  const unreadNotificationsCount = notifications.filter(n => !n.read).length;
+    const isLoading = loadingChannels || loadingPosts || loadingNotifs;
 
-  const regionalChannels = communityChannels.reduce((acc, channel) => {
-    if (!acc[channel.region]) {
-        acc[channel.region] = [];
+    if (isLoading) {
+        return <div className="text-center p-10">Загрузка...</div>;
     }
-    acc[channel.region].push(channel);
-    return acc;
-  }, {} as Record<string, CommunityChannel[]>);
+  
+    const unreadNotificationsCount = notifications.filter(n => !n.read).length;
 
-  const regionOrder: CommunityChannel['region'][] = ['Татарстан', 'Пермский край', 'Чувашия', 'Федеральные'];
-  const sortedRegions = Object.keys(regionalChannels).sort((a, b) => {
-    const indexA = regionOrder.indexOf(a as any);
-    const indexB = regionOrder.indexOf(b as any);
-    if (indexA === -1) return 1;
-    if (indexB === -1) return -1;
-    return indexA - indexB;
-  });
+    const regionalChannels = communityChannels.reduce((acc, channel) => {
+        if (!acc[channel.region]) {
+            acc[channel.region] = [];
+        }
+        acc[channel.region].push(channel);
+        return acc;
+    }, {} as Record<string, CommunityChannel[]>);
+
+    const regionOrder: CommunityChannel['region'][] = ['Татарстан', 'Пермский край', 'Чувашия', 'Федеральные'];
+    const sortedRegions = Object.keys(regionalChannels).sort((a, b) => {
+        const indexA = regionOrder.indexOf(a as any);
+        const indexB = regionOrder.indexOf(b as any);
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+    });
 
 
-  return (
-    <div className="p-4 space-y-4">
+    return (
+        <div className="p-4 space-y-4">
 
-      <CollapsibleSection title="Управление хозяйством" defaultOpen>
-        <div className="grid grid-cols-3 gap-3">
-          <ManagementCard to="/my-shop" title="Мой магазин" icon={ICONS.store} />
-          <ManagementCard to="/my-services" title="Мои услуги" icon={ICONS.briefcase} />
-          <ManagementCard to="/my-fields" title="Мои поля" icon={ICONS.mapPin} />
-          <ManagementCard to="/my-requests" title="Мои заявки" icon={ICONS.clipboardList} />
-          <ManagementCard to="/purchase-history" title="История покупок" icon={ICONS.receipt} />
-          <div className="relative">
-            <ManagementCard to="/notification-center" title="Центр уведомлений" icon={ICONS.bell} />
-            {unreadNotificationsCount > 0 && (
-                <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-                    {unreadNotificationsCount}
-                </span>
-            )}
-          </div>
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Полезные инструменты" defaultOpen>
-        <div className="space-y-3">
-           <ToolCard to="/agro-calculators" title="Агро-калькуляторы" icon={ICONS.calculator} color="bg-gradient-to-r from-yellow-500 to-orange-500"/>
-           <ToolCard to="/agro-weather" title="Детальный агропрогноз" icon={ICONS.weather} color="bg-gradient-to-r from-sky-500 to-indigo-500"/>
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Новости и анонсы АгроХаб">
-          {telegramPosts.length > 0 ? (
-            <div className="space-y-3">
-              {telegramPosts.map((post) => <TelegramPostCard key={post.id} post={post} />)}
-            </div>
-          ) : (
-            <div className="text-center text-gray-500 py-4">Не удалось загрузить новости.</div>
-          )}
-      </CollapsibleSection>
-      
-      <CollapsibleSection title="Центр Сообщества">
-          <div className="space-y-4">
-            {sortedRegions.map(region => (
-                <div key={region}>
-                    <h3 className="font-bold text-gray-600 text-md mb-2">{region}</h3>
-                    <div className="space-y-2">
-                        {regionalChannels[region].map(channel => <CommunityChannelCard key={channel.id} channel={channel} />)}
+            <CollapsibleSection title="Управление хозяйством" defaultOpen>
+                <div className="grid grid-cols-3 gap-3">
+                    <ManagementCard to="/my-shop" title="Мой магазин" icon={ICONS.store} />
+                    <ManagementCard to="/my-services" title="Мои услуги" icon={ICONS.briefcase} />
+                    <ManagementCard to="/my-fields" title="Мои поля" icon={ICONS.mapPin} />
+                    <ManagementCard to="/my-requests" title="Мои заявки" icon={ICONS.clipboardList} />
+                    <ManagementCard to="/purchase-history" title="История покупок" icon={ICONS.receipt} />
+                    <div className="relative">
+                        <ManagementCard to="/notification-center" title="Центр уведомлений" icon={ICONS.bell} />
+                        {unreadNotificationsCount > 0 && (
+                            <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                                {unreadNotificationsCount}
+                            </span>
+                        )}
                     </div>
                 </div>
-            ))}
-          </div>
-      </CollapsibleSection>
+            </CollapsibleSection>
 
-    </div>
-  );
+            <CollapsibleSection title="Полезные инструменты" defaultOpen>
+                <div className="space-y-3">
+                <ToolCard to="/agro-calculators" title="Агро-калькуляторы" icon={ICONS.calculator} color="bg-gradient-to-r from-yellow-500 to-orange-500"/>
+                <ToolCard to="/agro-weather" title="Детальный агропрогноз" icon={ICONS.weather} color="bg-gradient-to-r from-sky-500 to-indigo-500"/>
+                </div>
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Новости и анонсы АгроХаб">
+                {telegramPosts.length > 0 ? (
+                    <div className="space-y-3">
+                    {telegramPosts.map((post) => <TelegramPostCard key={post.id} post={post} />)}
+                    </div>
+                ) : (
+                    <div className="text-center text-gray-500 py-4">Не удалось загрузить новости.</div>
+                )}
+            </CollapsibleSection>
+      
+            <CollapsibleSection title="Центр Сообщества">
+                {communityChannels.length > 0 ? (
+                    <div className="space-y-4">
+                        {sortedRegions.map(region => (
+                            <div key={region}>
+                                <h3 className="font-bold text-gray-600 text-md mb-2">{region}</h3>
+                                <div className="space-y-2">
+                                    {regionalChannels[region].map(channel => <CommunityChannelCard key={channel.id} channel={channel} />)}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center text-gray-500 py-4">Не удалось загрузить список каналов.</div>
+                )}
+            </CollapsibleSection>
+
+        </div>
+    );
 };
 
 export default InfoHub;

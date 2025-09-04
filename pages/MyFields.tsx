@@ -1,7 +1,6 @@
-
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import useMockData from '../hooks/useMockData';
+import { useGetFields } from '../hooks/useGetFields'; // <-- 1. Новый хук
 import { ICONS } from '../constants';
 
 const getFieldWord = (count: number): string => {
@@ -21,15 +20,12 @@ const getFieldWord = (count: number): string => {
 };
 
 const MyFields: React.FC = () => {
-    const { fields, loading } = useMockData();
+    // --- 2. Получаем реальные данные с сервера ---
+    const { data: fields = [], isLoading } = useGetFields();
 
     const analytics = useMemo(() => {
         if (!fields || fields.length === 0) {
-            return {
-                totalFields: 0,
-                totalArea: 0,
-                cropStructure: []
-            };
+            return { totalFields: 0, totalArea: 0, cropStructure: [] };
         }
 
         const totalArea = fields.reduce((acc, field) => acc + field.area, 0);
@@ -49,8 +45,7 @@ const MyFields: React.FC = () => {
 
         const cropStructure = Object.entries(cropData)
             .map(([crop, data]) => ({
-                crop,
-                ...data,
+                crop, ...data,
                 percentage: totalSownArea > 0 ? (data.totalArea / totalSownArea) * 100 : 0
             }))
             .sort((a, b) => b.totalArea - a.totalArea);
@@ -62,11 +57,12 @@ const MyFields: React.FC = () => {
         };
     }, [fields]);
 
-
-    if (loading) {
+    // --- 3. Обработка загрузки ---
+    if (isLoading) {
         return <div className="text-center p-10">Загрузка полей...</div>;
     }
 
+    // --- 4. Основная разметка (без изменений) ---
     return (
         <div className="p-4 space-y-6">
             <div className="flex items-center justify-between">

@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import useMockData from '../hooks/useMockData';
 import { ICONS } from '../constants';
 import { PurchasedItem } from '../types';
+import { useGetProducts } from '../hooks/useGetProducts';
+import { useCreatePurchase } from '../hooks/useCreatePurchase';
+
 
 const parsePrice = (price: string): number => {
     return parseFloat(price.replace(/[^0-9.-]+/g,""));
@@ -11,12 +13,19 @@ const parsePrice = (price: string): number => {
 
 const Checkout: React.FC = () => {
     const { cartItems, clearCart, getCartCount } = useCart();
-    const { products, addPurchase } = useMockData();
+    const { data: products = [], isLoading } = useGetProducts();
+    const { mutate: createPurchase } = useCreatePurchase();
     const navigate = useNavigate();
+    
+    // Ждем, пока загрузятся все товары, чтобы правильно посчитать сумму
+    if (isLoading) {
+        return <div className="text-center p-10">Загрузка данных...</div>;
+    }
 
     const detailedCartItems = cartItems
         .map(item => {
-            const product = products.find(p => p.id === item.productId);
+            const productIdAsNumber = parseInt(item.productId, 10);
+            const product = products.find(p => p.id === productIdAsNumber);
             if (!product) return null;
             return { ...product, cartQuantity: item.quantity };
         })
@@ -26,11 +35,11 @@ const Checkout: React.FC = () => {
         if (!item) return acc;
         return acc + (parsePrice(item.price) * item.cartQuantity);
     }, 0);
-
+    
+    // --- ИСПРАВЛЕНИЕ: Вся эта логика перенесена внутрь функции ---
     const handleConfirmOrder = () => {
-        // Create purchase history item
         const purchasedItems: PurchasedItem[] = detailedCartItems.map(item => {
-            if (!item) throw new Error("Invalid item in cart"); // Should not happen
+            if (!item) throw new Error("Invalid item in cart");
             return {
                 id: item.id,
                 name: item.name,
@@ -41,15 +50,23 @@ const Checkout: React.FC = () => {
             };
         });
 
-        addPurchase(purchasedItems, total); // Save the purchase
-
-        clearCart();
-        navigate('/order-success');
+        createPurchase({
+            items: purchasedItems, 
+            totalAmount: total
+        }, {
+            onSuccess: () => {
+                clearCart();
+                navigate('/order-success');
+            }
+        });
     };
     
     if (cartItems.length === 0) {
         // Redirect to home if cart is empty and user lands here
-        navigate('/');
+        // Используем useEffect для безопасной навигации во время рендера
+        React.useEffect(() => {
+            navigate('/');
+        }, [navigate]);
         return null;
     }
 

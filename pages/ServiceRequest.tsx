@@ -1,22 +1,32 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import useMockData from '../hooks/useMockData';
 import { ICONS } from '../constants';
+import { useGetServiceById } from '../hooks/useGetServiceById';
+import { useGetServiceProviderById } from '../hooks/useGetServiceProviderById';
+import { useCreateServiceRequest } from '../hooks/useCreateServiceRequest';
 
 const ServiceRequest: React.FC = () => {
     const { serviceId } = useParams<{ serviceId: string }>();
-    const { services, serviceProviders, loading, addServiceRequest } = useMockData();
     const navigate = useNavigate();
 
+    // --- 1. Преобразуем ID в число ---
+    const numericServiceId = serviceId ? parseInt(serviceId, 10) : undefined;
+
+    // --- 2. Получаем данные об услуге ---
+    const { data: service, isLoading: isLoadingService, isError: isErrorService } = useGetServiceById(numericServiceId);
+    
+    // --- 3. Получаем данные о поставщике, когда услуга загружена ---
+    const { data: provider, isLoading: isLoadingProvider, isError: isErrorProvider } = useGetServiceProviderById(service?.providerId);
+
+    // --- 4. Получаем мутацию для создания заявки ---
+    const { mutate: createServiceRequest, isSuccess: isSubmitted } = useCreateServiceRequest();
+
+    // --- 5. Состояния формы ---
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [notes, setNotes] = useState('');
-    const [isSubmitted, setIsSubmitted] = useState(false);
 
-    const service = services.find(s => s.id === serviceId);
-    const provider = service ? serviceProviders.find(p => p.id === service.providerId) : undefined;
-
+    // --- 6. Логика отправки формы ---
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!name.trim() || !phone.trim() || !service || !provider) {
@@ -24,17 +34,16 @@ const ServiceRequest: React.FC = () => {
             return;
         }
 
-        addServiceRequest({
+        createServiceRequest({
             serviceId: service.id,
             providerId: provider.id,
             userName: name,
             userPhone: phone,
             notes: notes,
         });
-        
-        setIsSubmitted(true);
     };
 
+    // --- 7. Редирект после успешной отправки ---
     useEffect(() => {
         if (isSubmitted) {
             const timer = setTimeout(() => {
@@ -44,14 +53,19 @@ const ServiceRequest: React.FC = () => {
         }
     }, [isSubmitted, navigate]);
 
-    if (loading) {
+    // --- 8. Обработка состояний загрузки и ошибок ---
+    const isLoading = isLoadingService || isLoadingProvider;
+    const isError = isErrorService || isErrorProvider;
+
+    if (isLoading) {
         return <div className="text-center p-10">Загрузка...</div>;
     }
 
-    if (!service || !provider) {
+    if (isError || !service || !provider) {
         return <div className="text-center p-10 text-red-500">Услуга не найдена.</div>;
     }
 
+    // --- 9. Экран успешной отправки ---
     if (isSubmitted) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
@@ -62,6 +76,7 @@ const ServiceRequest: React.FC = () => {
         );
     }
 
+    // --- 10. Основная разметка формы ---
     return (
         <div className="p-4 space-y-6">
             <div className="flex items-center">

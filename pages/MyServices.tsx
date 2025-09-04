@@ -1,37 +1,48 @@
-
-import React, { useState, useRef } from 'react';
-import useMockData from '../hooks/useMockData';
+import React, { useState, useRef, useEffect } from 'react';
 import ServiceCard from '../components/ServiceCard';
 import { ICONS } from '../constants';
 import { Service } from '../types';
+import { useGetServiceProviderById } from '../hooks/useGetServiceProviderById';
+import { useGetServicesByProviderId } from '../hooks/useGetServicesByProviderId';
+import { useUpdateServiceProvider } from '../hooks/useUpdateServiceProvider';
+import { useCreateService } from '../hooks/useCreateService';
 
-// Hardcode the current user's provider ID for this prototype
-const MY_PROVIDER_ID = 'sp1'; 
+// Предполагаем, что у пользователя пока только один профиль поставщика услуг с ID=1
+const MY_PROVIDER_ID = 1;
 const SERVICE_CATEGORIES = ['Ремонт техники', 'Агро-консультации', 'Транспорт', 'Обработка полей'];
 
 const MyServices: React.FC = () => {
-    const { serviceProviders, services, addServiceManually, updateServiceProviderDetails, loading } = useMockData();
-    const myProvider = serviceProviders.find(p => p.id === MY_PROVIDER_ID);
-    const myServices = services.filter(s => s.providerId === MY_PROVIDER_ID);
+    // --- Получение реальных данных ---
+    const { data: myProvider, isLoading: isLoadingProvider, isError } = useGetServiceProviderById(MY_PROVIDER_ID);
+    const { data: myServices = [], isLoading: isLoadingServices } = useGetServicesByProviderId(MY_PROVIDER_ID);
+    const { mutate: updateServiceProvider } = useUpdateServiceProvider();
+    const { mutate: createService } = useCreateService();
 
+    // --- Состояния UI ---
     const [isManageToolsOpen, setIsManageToolsOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-    // Manual form state
+    // --- Состояния форм ---
     const [name, setName] = useState('');
     const [category, setCategory] = useState(SERVICE_CATEGORIES[0]);
     const [description, setDescription] = useState('');
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const manualImageInputRef = useRef<HTMLInputElement>(null);
-
-    // Edit modal state
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editedName, setEditedName] = useState('');
     const [editedDescription, setEditedDescription] = useState('');
     const [editedLogoPreview, setEditedLogoPreview] = useState<string | null>(null);
     const logoInputRef = useRef<HTMLInputElement>(null);
 
+    useEffect(() => {
+        if (myProvider) {
+            setEditedName(myProvider.name);
+            setEditedDescription(myProvider.description);
+            setEditedLogoPreview(myProvider.logoUrl);
+        }
+    }, [myProvider]);
+
     const handleManualImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
+        if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             if (imagePreview) URL.revokeObjectURL(imagePreview);
             setImagePreview(URL.createObjectURL(file));
@@ -40,69 +51,41 @@ const MyServices: React.FC = () => {
 
     const handleManualSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name || !description || !imagePreview) {
-            alert('Пожалуйста, заполните все поля и выберите фото.');
+        if (!name || !description) {
+            alert('Пожалуйста, заполните все поля.');
             return;
         }
-
-        const newService: Omit<Service, 'id' | 'providerId'> = {
+        createService({
             name,
             category,
             description,
-            imageUrl: imagePreview,
-        };
-
-        addServiceManually(newService, MY_PROVIDER_ID);
-
-        // Reset form
-        setName('');
-        setCategory(SERVICE_CATEGORIES[0]);
-        setDescription('');
-        setImagePreview(null);
+            imageUrl: imagePreview || 'https://i.ibb.co/VMyPzCF/default-product-image.png', // Заглушка
+            providerId: MY_PROVIDER_ID,
+        });
+        setName(''); setCategory(SERVICE_CATEGORIES[0]); setDescription(''); setImagePreview(null);
         if(manualImageInputRef.current) manualImageInputRef.current.value = "";
     };
-
-    const openEditModal = () => {
-        if (!myProvider) return;
-        setEditedName(myProvider.name);
-        setEditedDescription(myProvider.description);
-        setEditedLogoPreview(myProvider.logoUrl);
-        setIsEditModalOpen(true);
-    };
-
-    const closeEditModal = () => {
-        setIsEditModalOpen(false);
-        if (editedLogoPreview && editedLogoPreview.startsWith('blob:')) {
-            URL.revokeObjectURL(editedLogoPreview);
-        }
-    };
     
-    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const file = e.target.files[0];
-            const newPreviewUrl = URL.createObjectURL(file);
-            if (editedLogoPreview && editedLogoPreview.startsWith('blob:')) {
-                URL.revokeObjectURL(editedLogoPreview);
-            }
-            setEditedLogoPreview(newPreviewUrl);
-        }
-    };
-
+    const openEditModal = () => setIsEditModalOpen(true);
+    const closeEditModal = () => setIsEditModalOpen(false);
+    
     const handleProviderUpdate = (e: React.FormEvent) => {
         e.preventDefault();
         if (!myProvider) return;
-        updateServiceProviderDetails(myProvider.id, {
-            name: editedName,
-            description: editedDescription,
-            logoUrl: editedLogoPreview || myProvider.logoUrl,
+        updateServiceProvider({
+            providerId: myProvider.id,
+            providerData: { name: editedName, description: editedDescription }
         });
         closeEditModal();
     };
 
-    if (loading) {
+    const isLoading = isLoadingProvider || isLoadingServices;
+
+    if (isLoading) {
         return <div className="text-center p-10">Загрузка данных компании...</div>;
     }
-
+    
+    // ПРИМЕЧАНИЕ: Здесь можно добавить форму создания профиля поставщика услуг, если isError=true
     if (!myProvider) {
         return <div className="text-center p-10 text-red-500">Ошибка: Компания не найдена.</div>;
     }
@@ -123,24 +106,19 @@ const MyServices: React.FC = () => {
             </div>
 
             {isEditModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md animate-scale-in">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">Редактировать компанию</h2>
-                        <form onSubmit={handleProviderUpdate} className="space-y-4">
+                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                     <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md animate-scale-in">
+                         <h2 className="text-xl font-bold text-gray-800 mb-4">Редактировать компанию</h2>
+                         <form onSubmit={handleProviderUpdate} className="space-y-4">
                             <input type="text" value={editedName} onChange={e => setEditedName(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md" required />
-                            <textarea value={editedDescription} onChange={e => setEditedDescription(e.target.value)} rows={3} className="w-full p-2 border border-gray-300 rounded-md" required />
-                            <div className="flex items-center gap-4">
-                                <img src={editedLogoPreview || ''} alt="Предпросмотр лого" className="w-16 h-16 rounded-full object-cover border"/>
-                                <input type="file" ref={logoInputRef} onChange={handleLogoChange} className="hidden" accept="image/*" />
-                                <button type="button" onClick={() => logoInputRef.current?.click()} className="text-indigo-600 font-semibold hover:underline">Изменить лого</button>
-                            </div>
-                            <div className="flex justify-end gap-3 mt-6">
-                                <button type="button" onClick={closeEditModal} className="px-4 py-2 bg-gray-200 rounded-lg">Отмена</button>
-                                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Сохранить</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                             <textarea value={editedDescription} onChange={e => setEditedDescription(e.target.value)} rows={3} className="w-full p-2 border border-gray-300 rounded-md" required />
+                             <div className="flex justify-end gap-3 mt-6">
+                                 <button type="button" onClick={closeEditModal} className="px-4 py-2 bg-gray-200 rounded-lg">Отмена</button>
+                                 <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Сохранить</button>
+                             </div>
+                         </form>
+                     </div>
+                 </div>
             )}
 
             <div className="bg-white rounded-xl shadow-md overflow-hidden">

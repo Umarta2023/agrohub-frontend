@@ -2,28 +2,32 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { area as turfArea } from '@turf/area';
 import { polygon as turfPolygon } from '@turf/helpers';
-import useMockData from '../hooks/useMockData';
 import { ICONS } from '../constants';
+import { useGetFieldById } from '../hooks/useGetFieldById';
+import { useUpdateField } from '../hooks/useUpdateField';
+
 
 // Tell TypeScript that L exists in the global scope, loaded from a <script> tag.
 declare const L: any;
 
 const EditField: React.FC = () => {
     const { fieldId } = useParams<{ fieldId: string }>();
-    const { fields, updateField, loading } = useMockData();
     const navigate = useNavigate();
     
-    const field = useMemo(() => fields.find(f => f.id === fieldId), [fields, fieldId]);
+    // --- Получаем реальные данные ---
+    const numericFieldId = fieldId ? parseInt(fieldId, 10) : undefined;
+    const { data: field, isLoading } = useGetFieldById(numericFieldId);
+    const { mutate: updateField } = useUpdateField();
 
+    // --- Состояния формы и UI ---
     const [name, setName] = useState('');
     const [currentCrop, setCurrentCrop] = useState('');
     const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
     const [isFullScreen, setIsFullScreen] = useState(false);
-
-    // GPS states
     const [isGpsTracking, setIsGpsTracking] = useState(false);
     const [gpsError, setGpsError] = useState<string | null>(null);
     
+    // --- Refs ---
     const mapRef = useRef<any | null>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapWrapperRef = useRef<HTMLDivElement>(null);
@@ -32,8 +36,6 @@ const EditField: React.FC = () => {
     const gpsTrackLayerRef = useRef<any | null>(null);
     const userMarkerRef = useRef<any | null>(null);
 
-
-    // Populate state once field data is available
     useEffect(() => {
         if (field) {
             setName(field.name);
@@ -41,7 +43,6 @@ const EditField: React.FC = () => {
             setPolygonPoints(field.polygon || []);
         }
     }, [field]);
-
 
     const calculatedArea = useMemo(() => {
         if (polygonPoints.length < 3) return 0;
@@ -52,6 +53,32 @@ const EditField: React.FC = () => {
         return parseFloat(areaInHectares.toFixed(2));
     }, [polygonPoints]);
 
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!numericFieldId || !name || !currentCrop) {
+            alert('Пожалуйста, заполните название поля и культуру.');
+            return;
+        }
+        if (polygonPoints.length < 3) {
+            alert('Пожалуйста, нарисуйте или обновите контур поля.');
+            return;
+        }
+        updateField({
+            fieldId: numericFieldId,
+            fieldData: {
+                name,
+                area: calculatedArea,
+                currentCrop,
+                polygon: polygonPoints,
+            }
+        }, {
+            onSuccess: () => {
+                navigate(`/field/${numericFieldId}`);
+            }
+        });
+    };
+    
+    // ... остальной код (Карта, GPS, Fullscreen) без изменений ...
     const handleToggleFullScreen = () => {
         if (!mapWrapperRef.current) return;
         if (!document.fullscreenElement) {
@@ -73,7 +100,7 @@ const EditField: React.FC = () => {
     }, []);
     
     useEffect(() => {
-        if (loading || !mapContainerRef.current || mapRef.current) return;
+        if (isLoading || !mapContainerRef.current || mapRef.current) return;
 
         const map = L.map(mapContainerRef.current).setView([45.035, 38.975], 10);
         mapRef.current = map;
@@ -92,16 +119,9 @@ const EditField: React.FC = () => {
         }
 
         const drawControl = new L.Control.Draw({
-            edit: {
-                featureGroup: drawnItems,
-                poly: { allowIntersection: false }
-            },
+            edit: { featureGroup: drawnItems, poly: { allowIntersection: false } },
             draw: {
-                polygon: {
-                    allowIntersection: false,
-                    showArea: true,
-                    shapeOptions: { color: '#fbbf24' }
-                },
+                polygon: { allowIntersection: false, showArea: true, shapeOptions: { color: '#fbbf24' } },
                 polyline: false, rectangle: false, circle: false, marker: false, circlemarker: false,
             }
         });
@@ -128,7 +148,7 @@ const EditField: React.FC = () => {
              if (mapRef.current) mapRef.current.remove();
              mapRef.current = null;
         };
-    }, [loading, field]);
+    }, [isLoading, field]);
 
     const handleToggleGpsTracking = () => {
         const map = mapRef.current;
@@ -192,26 +212,7 @@ const EditField: React.FC = () => {
         };
     }, []);
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!fieldId || !name || !currentCrop) {
-            alert('Пожалуйста, заполните название поля и культуру.');
-            return;
-        }
-        if (polygonPoints.length < 3) {
-            alert('Пожалуйста, нарисуйте или обновите контур поля.');
-            return;
-        }
-        updateField(fieldId, {
-            name,
-            area: calculatedArea,
-            currentCrop,
-            polygon: polygonPoints,
-        });
-        navigate(`/field/${fieldId}`);
-    };
-
-    if (loading) {
+    if (isLoading) {
         return <div className="text-center p-10">Загрузка данных поля...</div>;
     }
 

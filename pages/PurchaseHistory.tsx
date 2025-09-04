@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import useMockData from '../hooks/useMockData';
 import { ICONS } from '../constants';
 import type { Purchase, PurchasedItem } from '../types';
+import { useGetPurchases } from '../hooks/useGetPurchases';
+import { useGetShops } from '../hooks/useGetShops';
 
 const PurchaseHistory: React.FC = () => {
-    const { purchases, shops, loading } = useMockData();
+    const { data: purchases = [], isLoading: loadingPurchases } = useGetPurchases();
+    const { data: shops = [], isLoading: loadingShops } = useGetShops();
     const [expandedPurchaseId, setExpandedPurchaseId] = useState<string | null>(null);
+
+    const isLoading = loadingPurchases || loadingShops;
 
     const toggleExpand = (purchaseId: string) => {
         setExpandedPurchaseId(prevId => (prevId === purchaseId ? null : purchaseId));
@@ -14,6 +18,7 @@ const PurchaseHistory: React.FC = () => {
 
     const itemsByShop = (items: PurchasedItem[]) => {
         return items.reduce((acc, item) => {
+            // ID теперь числа, нужно привести типы
             const shop = shops.find(s => s.id === item.shopId);
             const shopName = shop?.name || 'Неизвестный магазин';
             if (!acc[shopName]) {
@@ -24,7 +29,7 @@ const PurchaseHistory: React.FC = () => {
         }, {} as Record<string, PurchasedItem[]>);
     };
 
-    if (loading) {
+    if (isLoading) {
         return <div className="text-center p-10">Загрузка истории...</div>;
     }
 
@@ -52,15 +57,15 @@ const PurchaseHistory: React.FC = () => {
                 <div className="space-y-4">
                     {sortedPurchases.map((purchase) => (
                         <div key={purchase.id} className="bg-white rounded-xl shadow-md overflow-hidden">
-                            <button onClick={() => toggleExpand(purchase.id)} className="w-full flex justify-between items-center p-4 hover:bg-gray-50 transition-colors text-left">
+                            <button onClick={() => toggleExpand(String(purchase.id))} className="w-full flex justify-between items-center p-4 hover:bg-gray-50 transition-colors text-left">
                                 <div>
                                     <p className="font-bold text-gray-800">Заказ от {new Date(purchase.date).toLocaleDateString('ru-RU')}</p>
                                     <p className="text-sm text-gray-500">Сумма: <span className="font-semibold">{purchase.totalAmount.toLocaleString('ru-RU')} ₽</span></p>
                                 </div>
-                                <ICONS.chevronDown className={`w-6 h-6 text-gray-500 transition-transform duration-300 ${expandedPurchaseId === purchase.id ? 'rotate-180' : ''}`} />
+                                <ICONS.chevronDown className={`w-6 h-6 text-gray-500 transition-transform duration-300 ${expandedPurchaseId === String(purchase.id) ? 'rotate-180' : ''}`} />
                             </button>
                             
-                            <div className={`grid transition-all duration-300 ease-in-out ${expandedPurchaseId === purchase.id ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                            <div className={`grid transition-all duration-300 ease-in-out ${expandedPurchaseId === String(purchase.id) ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                                 <div className="overflow-hidden">
                                      <div className="p-4 border-t border-gray-200 space-y-4">
                                         {Object.entries(itemsByShop(purchase.items)).map(([shopName, items]) => (

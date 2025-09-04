@@ -20,7 +20,7 @@ export interface Product {
 }
 
 export interface Ad {
-  id:string;
+  id:number;
   title: string;
   category: string;
   price: string;
@@ -30,7 +30,7 @@ export interface Ad {
 }
 
 export interface ServiceProvider {
-  id: string;
+  id: number;
   name: string;
   description: string;
   logoUrl: string;
@@ -38,9 +38,9 @@ export interface ServiceProvider {
 }
 
 export interface Service {
-  id: string;
+  id: number;
   name:string;
-  providerId: string;
+  providerId: number;
   category: string;
   description: string;
   imageUrl: string;
@@ -73,7 +73,7 @@ export interface CommunityChannel {
 }
 
 export interface Field {
-  id: string;
+  id: number;
   name: string;
   area: number; // in hectares
   currentCrop: string;
@@ -82,8 +82,8 @@ export interface Field {
 }
 
 export interface FieldOperation {
-  id: string;
-  fieldId: string;
+  id: number;
+  fieldId: number;
   type: string;
   date: string;
   notes: string;
@@ -100,7 +100,7 @@ export interface FieldOperation {
 }
 
 export interface CropHistory {
-  id: string;
+  id: number;
   fieldId: string;
   year: number;
   crop: string;
@@ -108,8 +108,8 @@ export interface CropHistory {
 
 export interface ServiceRequestData {
   id: string;
-  serviceId: string;
-  providerId: string;
+  serviceId: number;
+  providerId: number;
   userName: string;
   userPhone: string;
   notes: string;
@@ -123,23 +123,23 @@ export interface CartItem {
 }
 
 export interface PurchasedItem {
-  id: string;
+  id: number;
   name: string;
   price: string;
   imageUrl: string;
-  shopId: string;
+  shopId: number; // <-- ИСПРАВЛЕНО
   quantity: number;
 }
 
 export interface Purchase {
-  id: string;
+  id: number;
   date: string; // ISO string
   totalAmount: number;
   items: PurchasedItem[];
 }
 
 export interface AgroNotification {
-  id: string;
+  id: number;
   type: 'info' | 'warning' | 'success' | 'task';
   title: string;
   message: string;
@@ -176,7 +176,7 @@ export interface ServiceProviderUpdatePayload {
 }
 
 export interface FieldOperationPayload {
-  fieldId: string;
+  fieldId: number;
   type: string;
   date: string;
   notes: string;
@@ -200,8 +200,8 @@ export interface FieldUpdatePayload {
 }
 
 export interface ServiceRequestPayload {
-  serviceId: string;
-  providerId: string;
+  serviceId: number;
+  providerId: number;
   userName: string;
   userPhone: string;
   notes: string;

@@ -1,16 +1,15 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { area as turfArea } from '@turf/area';
 import { polygon as turfPolygon } from '@turf/helpers';
-import useMockData from '../hooks/useMockData';
+import { useCreateField } from '../hooks/useCreateField'; // <-- ИЗМЕНЕНИЕ №1: Новый хук
 import { ICONS } from '../constants';
 
 // Tell TypeScript that L exists in the global scope, loaded from a <script> tag.
 declare const L: any;
 
 const AddField: React.FC = () => {
-    const { addField } = useMockData();
+    const { mutate: createField } = useCreateField(); // <-- ИЗМЕНЕНИЕ №2: Используем новый хук
     const navigate = useNavigate();
     const [name, setName] = useState('');
     const [currentCrop, setCurrentCrop] = useState('');
@@ -254,13 +253,21 @@ const AddField: React.FC = () => {
             alert('Пожалуйста, нарисуйте контур поля.');
             return;
         }
-        addField({
+        
+        // <-- ИЗМЕНЕНИЕ №3: Вызываем мутацию
+        createField({
             name,
             area: calculatedArea,
             currentCrop,
             polygon: polygonPoints,
+            // Добавляем заглушку для imageUrl, если поле обязательное на бэкенде
+            imageUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/9/188/321'
+        }, {
+            onSuccess: () => {
+                // Перенаправляем на страницу полей только после успешного создания
+                navigate('/my-fields');
+            }
         });
-        navigate('/my-fields');
     };
 
     const handleSearch = async (e: React.FormEvent) => {

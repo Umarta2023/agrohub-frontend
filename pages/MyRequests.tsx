@@ -1,9 +1,11 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
-import useMockData from '../hooks/useMockData';
 import { ICONS } from '../constants';
-import type { ServiceRequestData } from '../types';
+import type { ServiceRequestData, Service, ServiceProvider } from '../types';
+import { useGetServiceRequests } from '../hooks/useGetServiceRequests';
+import { useGetServices } from '../hooks/useGetServices';
+import { useGetServiceProviders } from '../hooks/useGetServiceProviders';
+
 
 const getStatusClass = (status: ServiceRequestData['status']) => {
     switch (status) {
@@ -15,13 +17,14 @@ const getStatusClass = (status: ServiceRequestData['status']) => {
     }
 };
 
-const RequestCard: React.FC<{ request: ServiceRequestData }> = ({ request }) => {
-    const { services, serviceProviders } = useMockData();
+// --- 1. Изменяем RequestCard, чтобы он принимал все данные через пропсы ---
+const RequestCard: React.FC<{ request: ServiceRequestData, services: Service[], serviceProviders: ServiceProvider[] }> = ({ request, services, serviceProviders }) => {
+    // Данные теперь не загружаются здесь, а приходят сверху
     const service = services.find(s => s.id === request.serviceId);
     const provider = serviceProviders.find(p => p.id === request.providerId);
 
     if (!service || !provider) {
-        return <div className="bg-white p-4 rounded-xl shadow-md border-l-4 border-red-500">Заявка #{request.id} - данные не найдены.</div>;
+        return <div className="bg-white p-4 rounded-xl shadow-md border-l-4 border-red-500">Заявка #{request.id} - связанные данные не найдены.</div>;
     }
 
     return (
@@ -38,12 +41,17 @@ const RequestCard: React.FC<{ request: ServiceRequestData }> = ({ request }) => 
 };
 
 const MyRequests: React.FC = () => {
-    const { serviceRequests, loading } = useMockData();
+    // --- 2. Загружаем все необходимые данные в родительском компоненте ---
+    const { data: serviceRequests = [], isLoading: loadingRequests } = useGetServiceRequests();
+    const { data: services = [], isLoading: loadingServices } = useGetServices();
+    const { data: serviceProviders = [], isLoading: loadingProviders } = useGetServiceProviders();
+
+    const isLoading = loadingRequests || loadingServices || loadingProviders;
 
     const activeRequests = serviceRequests.filter(r => r.status === 'Открыта' || r.status === 'В работе').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     const archivedRequests = serviceRequests.filter(r => r.status === 'Выполнена' || r.status === 'Отклонена').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    if (loading) {
+    if (isLoading) {
         return <div className="text-center p-10">Загрузка заявок...</div>;
     }
 
@@ -69,7 +77,8 @@ const MyRequests: React.FC = () => {
                         <h2 className="text-lg font-bold text-gray-800 px-2 mb-3">Активные заявки</h2>
                         {activeRequests.length > 0 ? (
                             <div className="space-y-4">
-                                {activeRequests.map(req => <RequestCard key={req.id} request={req} />)}
+                                {/* --- 3. Передаем загруженные данные в RequestCard --- */}
+                                {activeRequests.map(req => <RequestCard key={req.id} request={req} services={services} serviceProviders={serviceProviders} />)}
                             </div>
                         ) : (
                             <p className="text-center text-gray-500 py-4">Нет активных заявок.</p>
@@ -80,7 +89,7 @@ const MyRequests: React.FC = () => {
                         <h2 className="text-lg font-bold text-gray-800 px-2 mb-3">Архив</h2>
                         {archivedRequests.length > 0 ? (
                             <div className="space-y-4">
-                                {archivedRequests.map(req => <RequestCard key={req.id} request={req} />)}
+                                {archivedRequests.map(req => <RequestCard key={req.id} request={req} services={services} serviceProviders={serviceProviders} />)}
                             </div>
                         ) : (
                             <p className="text-center text-gray-500 py-4">Архив пуст.</p>
