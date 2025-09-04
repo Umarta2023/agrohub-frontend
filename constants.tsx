@@ -1,7 +1,7 @@
 
 import React from 'react';
 // agrohub-frontend/constants.tsx
-export const API_URL = 'https://agrohubapp.ru/api/v1';
+export const API_URL = 'https://agrohubapp.ru';
 export const ICONS = {
   marketplace: (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
